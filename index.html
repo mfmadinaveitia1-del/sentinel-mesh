@@ -1,0 +1,421 @@
+<title>Sentinel Mesh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* Layout: thin header + agent strip · full-bleed particle stage with a crawler that carries messages · six telemetry panels. Single deliberate dark look. */
+:root{color-scheme:dark;--bg:#030406;--panel:#07090d;--line:#151b24;--muted:#5d6b7c;--text:#dfe7f1;--soft:#93a2b4;--teal:#3fd9c1;--pink:#ff4f8b;--yellow:#f4d35e;--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}[hidden]{display:none!important}
+html,body{background:var(--bg)}
+body{margin:0;font-family:var(--mono);background:var(--bg);color:var(--text);font-size:11px}
+button,textarea,input{font:inherit}button{cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.top{display:flex;align-items:center;gap:16px;padding:8px 16px;font-size:10px;color:var(--muted);letter-spacing:.5px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.top b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.top .brand b{font-weight:700}
+.top .y b{color:var(--yellow)}.top .p b{color:var(--pink)}.top .t b{color:var(--teal)}
+.top .studio{margin-left:auto;color:var(--pink)}
+.strip{display:flex;gap:3px;padding:5px 16px;overflow-x:auto;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.strip button{flex:1 0 auto;min-width:86px;border:0;background:#0b0f15;color:#6f7d8e;padding:5px 8px;font-size:10px;border-bottom:2px solid transparent}
+.strip button.live{background:var(--c);color:#03060a;font-weight:700}
+.strip button.sel{border-bottom-color:var(--c);color:var(--text)}
+.strip button.live.sel{color:#03060a}
+.strip button.off{opacity:.35;text-decoration:line-through}
+.controls{display:flex;gap:6px;padding:4px 16px 8px;flex-wrap:wrap;align-items:center}
+.ctl{border:1px solid #222b37;background:#0a0e14;color:#b9c6d4;padding:6px 10px;font-size:10px;letter-spacing:.8px;border-radius:2px}
+.ctl:hover{background:#121924;color:#fff}
+.ctl.primary{background:var(--teal);border-color:var(--teal);color:#021210;font-weight:700}
+.seg{display:flex;border:1px solid #222b37;border-radius:2px;overflow:hidden}
+.seg button{border:0;background:#0a0e14;color:#7c8a9b;padding:6px 10px;font-size:10px;letter-spacing:.8px;border-right:1px solid #222b37}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#1a2430;color:#fff}
+.spacer{flex:1}
+.stage{position:relative;height:min(70vh,760px);min-height:440px;margin:0 16px;background:#020305;border:1px solid var(--line);overflow:hidden}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.shead{position:absolute;top:14px;left:14px;padding-left:10px;border-left:3px solid var(--hc,#dfe7f1);pointer-events:none}
+.shead .n{font-size:20px;font-weight:500;letter-spacing:1px;color:#f2f6fb}
+.shead .s{font-size:10px;color:var(--hc,#93a2b4);opacity:.85;margin-top:2px}
+.sright{position:absolute;top:14px;right:14px;text-align:right;font-size:10px;color:var(--muted);pointer-events:none}
+.sright strong{display:block;font-size:16px;font-weight:500;color:var(--teal);font-variant-numeric:tabular-nums}
+.foot{position:absolute;left:14px;bottom:10px;right:14px;font-size:9px;color:#3e4a58;pointer-events:none;letter-spacing:.6px}
+.drawer{position:absolute;top:70px;left:14px;width:min(330px,calc(100% - 28px));max-height:calc(100% - 100px);overflow:auto;background:rgba(5,8,12,.94);border:1px solid #243041;padding:14px;display:flex;flex-direction:column;gap:9px;z-index:3;backdrop-filter:blur(4px)}
+.drawer label{font-size:10px;letter-spacing:1.2px;color:#c9d5e2;display:flex;justify-content:space-between;gap:8px}
+.drawer label small{color:var(--muted);letter-spacing:0}
+.drawer textarea{width:100%;resize:vertical;background:#020406;color:#c3d3e3;border:1px solid #243041;padding:9px;line-height:1.6;border-radius:2px;outline:none}
+.drawer textarea:focus{border-color:var(--teal)}
+.drawer .tools{font-size:9.5px;color:var(--muted)}
+.drawer .row{display:flex;gap:6px;flex-wrap:wrap}.drawer .row .ctl{flex:1}
+.toggle{display:flex;align-items:center;gap:7px;font-size:10px;color:#a8b7c8;letter-spacing:1px;cursor:pointer}
+.toggle input{accent-color:var(--teal);margin:0}
+.panels{display:grid;grid-template-columns:1.15fr 1fr 1fr 1fr 1fr 1.25fr;gap:6px;padding:6px 16px 6px}
+.panel{background:var(--panel);border:1px solid var(--line);padding:10px 11px;min-width:0;overflow:hidden;min-height:200px}
+.panel h3{margin:0 0 9px;display:flex;justify-content:space-between;gap:6px;font-size:9.5px;letter-spacing:1.2px;color:#c2ceda;font-weight:700}
+.panel h3 span{color:var(--teal);font-weight:400;letter-spacing:0;white-space:nowrap}
+.lg{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;color:#8395a8}
+.lg i{font-style:normal;color:#404d5c;margin-right:6px}.lg b{font-weight:400;display:inline-block;width:34px}
+.sec{margin-bottom:9px}.sec .h{display:flex;justify-content:space-between;font-size:9.5px;color:#8a99aa;margin-bottom:3px}
+.sec .h span:last-child{font-variant-numeric:tabular-nums}
+.sec .tr{height:3px;background:#121821}.sec .fl{height:100%;transition:width .2s}
+.sec.cur .h span:first-child{color:#fff}
+svg{display:block;max-width:100%}#gauge{max-height:104px;margin:0 auto}#radar{max-height:130px;margin:0 auto}
+.heat .r{display:flex;gap:3px;align-items:center;margin-bottom:5px}
+.heat .r span{width:26px;font-size:8.5px;color:#5e6c7c}
+.heat .r i{flex:1;height:8px;background:#121821}
+.big{font-size:17px;color:#e8eef5;margin:4px 0 6px;font-variant-numeric:tabular-nums}
+.kv{display:flex;justify-content:space-between;font-size:9.5px;color:#6f7e8f;margin-bottom:2px}.kv b{font-weight:400;font-variant-numeric:tabular-nums}
+.minibar{display:flex;align-items:center;gap:6px;font-size:9px;color:#6f7e8f;margin-top:4px}
+.minibar span:first-child{width:52px}.minibar i{height:5px;background:var(--teal);display:block}
+.code{font-size:9.5px;line-height:1.75;color:#6d7c8d;white-space:pre;overflow:hidden;margin:0;font-family:var(--mono)}
+.code .c{color:#3d4957}.code .k{color:#ff7a9c}.code .on{color:#e8eef5;background:#101822}
+.cursor{display:inline-block;width:6px;height:11px;background:var(--pink);vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.note{font-size:9.5px;color:#3e4a58;padding:6px 16px 14px;line-height:1.6}
+.note b{color:var(--pink);font-weight:400}
+@media(max-width:1100px){.panels{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.panels{grid-template-columns:repeat(2,minmax(0,1fr))}.stage{height:62vh;min-height:400px}.shead .n{font-size:15px}.top .studio{display:none}.spacer{display:none}}
+@media(prefers-reduced-motion:reduce){.cursor{animation:none}.sec .fl{transition:none}}
+</style>
+
+<div class="top">
+  <span class="brand">SWARM <b>sentinel-mesh</b></span>
+  <span>AGENTS <b id="mAgents">7/7</b></span>
+  <span class="t">HOPS <b id="mHops">00/00</b></span>
+  <span>TENTACLES <b id="mTent">0</b></span>
+  <span>TOKENS <b id="mTok">0</b></span>
+  <span class="y">LINKS <b id="mLinks">0</b></span>
+  <span class="p">FLAGS <b id="mFlags">0</b></span>
+  <span>T <b id="mT">0.00</b></span>
+  <span>FRAME <b id="mFrame">0000</b></span>
+  <span class="studio">studio.secops</span>
+</div>
+<div class="strip" id="strip"></div>
+<div class="controls">
+  <button class="ctl primary" id="runBtn" type="button">▶ RUN</button>
+  <button class="ctl" id="resetBtn" type="button">↺ RESET</button>
+  <button class="ctl" id="speedBtn" type="button">SPEED 1×</button>
+  <div class="seg" id="topo" role="group" aria-label="Topology"></div>
+  <span class="spacer"></span>
+  <button class="ctl" id="editBtn" type="button">✎ EDIT TEAM</button>
+  <button class="ctl" id="copyBtn" type="button">COPY PROMPTS</button>
+  <button class="ctl" id="jsonBtn" type="button">COPY JSON</button>
+</div>
+<div class="stage" id="stage">
+  <canvas id="net" aria-label="Animated agent swarm"></canvas>
+  <div class="shead" id="shead"><div class="n"><span id="sNo">00</span> <span id="sName">READY</span></div><div class="s" id="sSub">awaiting run</div></div>
+  <div class="sright"><span id="sState">STANDBY</span><strong id="sPct">0%</strong></div>
+  <div class="foot">SIMULATED ASSESSMENT · NO NETWORK IS SCANNED · CLICK A CLOUD TO EDIT THAT AGENT</div>
+  <div class="drawer" id="drawer" hidden>
+    <label for="taskBox">TASK <small id="taskCount">0 words</small></label>
+    <textarea id="taskBox" rows="3" spellcheck="false"></textarea>
+    <label for="briefBox"><span id="briefLabel">ORCHESTRATOR</span> <small id="briefCount">0 words</small></label>
+    <div class="tools" id="briefTools"></div>
+    <textarea id="briefBox" rows="6" spellcheck="false"></textarea>
+    <label class="toggle" id="toggleRow"><input type="checkbox" id="onBox" checked> AGENT ONLINE</label>
+    <div class="row"><button class="ctl" id="exampleBtn" type="button">LOAD EXAMPLE</button><button class="ctl" id="closeBtn" type="button">CLOSE</button></div>
+  </div>
+</div>
+<div class="panels">
+  <div class="panel"><h3>MESSAGE LOG <span id="rate">0 hop/s</span></h3><div id="log"></div></div>
+  <div class="panel"><h3>AGENTS <span>7</span></h3><div id="secs"></div></div>
+  <div class="panel"><h3>COVERAGE RADAR <span>live</span></h3><svg id="radar" viewBox="0 0 170 140" aria-label="Agent coverage radar"></svg><div id="kinds"></div></div>
+  <div class="panel heat"><h3>HANDOFF HEAT <span id="heatTot">0</span></h3><div id="heat"></div><div class="kv" style="margin-top:8px"><span>tokens per second</span></div><div class="big" id="tps">0/s</div><div id="kv"></div></div>
+  <div class="panel"><h3>TEAM SCORE <span>heuristic</span></h3><svg id="spark" viewBox="0 0 150 40" aria-label="Tokens per hop"></svg><svg id="gauge" viewBox="0 0 150 110" aria-label="Team score gauge"></svg><div class="kv" id="scoreNote" style="justify-content:center;color:#ff7a9c"></div></div>
+  <div class="panel"><h3>SCAN.PY <span id="codeRate">idle</span></h3><pre class="code" id="code"></pre></div>
+</div>
+<div class="note">Educational prototype of a defensive security-assessment team. Clouds are agents and their density grows with brief length. The crawler carries each message and reaches into the receiving agent's key terms. <b>Pink</b> boxes flag vague words or thin briefs; <b style="color:var(--yellow)">yellow</b> squares mark terms two agents share. No network is scanned and no model is called — the plan, token counts and the validator's issue count are all simulated.</div>
+
+<script>
+(()=>{'use strict';
+const AG=[
+  {key:'orch',name:'SCAN LEAD',short:'LED',color:'#e9eef5',tools:'plan · route · merge',kinds:['scope','asset','route']},
+  {key:'research',name:'RECON',short:'RCN',color:'#4fc3ff',tools:'host discovery · port map',kinds:['host','service','port']},
+  {key:'retrieve',name:'CVE INTEL',short:'CVE',color:'#3fd9c1',tools:'cve feed · asset db',kinds:['cve','advisory','version']},
+  {key:'analyst',name:'RISK ANALYST',short:'RSK',color:'#f4c35e',tools:'cvss · correlation',kinds:['severity','cluster','rank']},
+  {key:'critic',name:'VALIDATOR',short:'VAL',color:'#ff5c8f',tools:'evidence check · dedupe',kinds:['evidence','confirm','fix']},
+  {key:'writer',name:'REMEDIATION',short:'REM',color:'#b294ff',tools:'report · tickets',kinds:['finding','owner','fix']},
+  {key:'guard',name:'COMPLIANCE',short:'CMP',color:'#ff9a5c',tools:'scope gate · policy',kinds:['scope','policy','approval']}
+];
+const USER={key:'user',name:'SEC TEAM',short:'SEC',color:'#8a98ab',tools:'',kinds:['task']};
+const ALL=[USER,...AG],WORKERS=AG.slice(1).map(a=>a.key),byKey=k=>ALL.find(a=>a.key===k);
+const sample={
+  task:'Assess the corporate network for exploitable weaknesses and produce a prioritised remediation report for the security team.',
+  orch:'You coordinate the assessment. Break the task into sub-tasks, assign each to the best agent, track progress and merge results into one report. Stay inside the authorised scope and stop only when the validator and compliance both approve.',
+  research:'Discover live hosts, open ports and running services across the approved network ranges. Build an inventory of assets, software and exposed surface. Never touch anything outside the authorised scope.',
+  retrieve:'Match discovered software and versions against known-vulnerability databases. Return CVE identifiers, CVSS scores and affected assets with advisory references. Do not fabricate a CVE.',
+  analyst:'Correlate findings into distinct issues. Rank by CVSS severity, exploitability and business impact. Report affected-asset counts and a confidence level for each issue. Keep it simple.',
+  critic:'Confirm every finding against its evidence. Flag false positives, duplicates and unsupported severity ratings. Send concrete fixes back to the agent responsible.',
+  writer:'Write a prioritised remediation report: executive summary, top risks table, affected assets, recommended fixes and owners. Plain language, short sentences, no internal jargon.',
+  guard:'Keep every action inside the authorised test scope and rules of engagement. Remove credentials and sensitive data from external outputs. Confirm sign-off before release.'
+};
+const TOPO={hier:'SUPERVISOR',seq:'PIPELINE',debate:'DEBATE'};
+const BUDGET=12000;
+const stop=new Set(['about','after','agent','agents','each','every','from','into','only','other','their','them','then','they','this','that','with','your','before','both','best','short','return','never','results','against','back']);
+const vague=new Set(['things','stuff','something','somehow','nice','good','better','perfect','whatever','maybe','etc','quickly','everything','obviously','simply','simple','clearly','easy','just','fast','great','appropriate','relevant']);
+
+let values={...sample},enabled=Object.fromEntries(AG.map(a=>[a.key,true])),topology='hier',active='orch',plan=[],stepIdx=0,stepT=0,runState='idle',speed=1,lastT=0,tick=0,elapsed=0,used={},matrix={},logs=[],kw={},clusters={},flags=[],links=[],trail=[],tentRead=0,lastShown=-1,stars=[];
+const $=id=>document.getElementById(id),canvas=$('net'),ctx=canvas.getContext('2d');
+const split=s=>(String(s||'').match(/[\p{L}\p{N}]+(?:['’_-][\p{L}\p{N}]+)*/gu)||[]);
+const words=s=>split(s).length;
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+const r01=s=>(hash(s)%10000)/10000;
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rgba(hex,a){const h=hex.replace('#','');return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=(n,l=2)=>String(n).padStart(l,'0');
+const fmt=n=>n>=1000?(n/1000).toFixed(1)+'k':String(n);
+const on=k=>k==='orch'||k==='user'||!!enabled[k];
+const textOf=k=>k==='user'?values.task:values[k];
+const mmss=t=>pad(Math.floor(t/60))+':'+pad(Math.floor(t%60));
+
+/* ---------- plan ---------- */
+function weakBriefs(){return AG.filter(a=>on(a.key)).filter(a=>{const w=split(values[a.key]);return w.length<12||w.some(x=>vague.has(x.toLowerCase()))})}
+const S=(from,to,kind,label)=>({from,to,kind,label});
+function buildPlan(){
+  const p=[S('user','orch','task','task received')];
+  if(topology==='hier'){
+    const subs={research:['map network & assets','asset inventory'],retrieve:['look up known vulns','CVE matches'],analyst:['score & rank risks','ranked risks']};
+    ['research','retrieve','analyst'].forEach(k=>{if(on(k)){p.push(S('orch',k,'dispatch',subs[k][0]));p.push(S(k,'orch','result',subs[k][1]))}});
+    if(on('critic')){const n=weakBriefs().length+1;p.push(S('orch','critic','review','validate findings'));p.push(S('critic','orch','feedback',`${n} issue${n>1?'s':''} found`));
+      if(on('analyst')){p.push(S('orch','analyst','revise','apply validator fixes'));p.push(S('analyst','orch','revise','revised ranking'))}}
+    if(on('writer')){p.push(S('orch','writer','dispatch','draft remediation report'));p.push(S('writer','orch','result','draft v1'))}
+    if(on('guard')){p.push(S('orch','guard','check','scope & policy check'));p.push(S('guard','orch','approve','cleared for release'))}
+  }else if(topology==='seq'){
+    const out={research:'asset inventory',retrieve:'CVE matches',analyst:'ranked risks',critic:'validated findings',writer:'draft report',guard:'cleared report'};
+    let prev='orch';WORKERS.filter(on).forEach(k=>{p.push(S(prev,k,prev==='orch'?'dispatch':'handoff',prev==='orch'?'start pipeline':out[prev]));prev=k});
+    if(prev!=='orch')p.push(S(prev,'orch','result',out[prev]));
+  }else{
+    if(on('research')){p.push(S('orch','research','dispatch','map network & assets'));p.push(S('research','orch','result','asset inventory'))}
+    if(on('retrieve')){p.push(S('orch','retrieve','dispatch','look up known vulns'));p.push(S('retrieve','orch','result','CVE matches'))}
+    let last='orch';
+    if(on('analyst')){p.push(S('orch','analyst','dispatch','propose risk ranking'));last='analyst';
+      if(on('critic'))for(let r=1;r<=3;r++){p.push(S('analyst','critic','debate',`claim · round ${r}`));p.push(S('critic','analyst','debate',r<3?`challenge · round ${r}`:'concede · consensus'))}}
+    if(on('writer')){p.push(S(last,'writer','handoff','agreed findings'));last='writer'}
+    if(on('guard')){p.push(S(last,'guard','check','scope & policy check'));last='guard'}
+    if(last!=='orch')p.push(S(last,'orch','result','consensus output'));
+  }
+  p.push(S('orch','user','final','remediation report'));
+  p.forEach((s,i)=>{s.tok=Math.round(120+words(textOf(s.from))*6+(s.to==='user'?0:words(textOf(s.to))*2)+r01(s.from+s.to+i+topology)*240)});
+  return p;
+}
+const planned=k=>plan.filter(s=>s.from===k).reduce((n,s)=>n+s.tok,0);
+const plannedTotal=()=>plan.reduce((n,s)=>n+s.tok,0);
+const usedTotal=()=>Object.values(used).reduce((n,v)=>n+v,0);
+const loops=()=>Math.floor(plan.filter(s=>s.kind==='revise'||s.kind==='debate').length/2);
+function score(){
+  const ws=WORKERS.filter(on);let s=ws.length/6*30;if(on('critic'))s+=12;if(on('guard'))s+=10;
+  const briefs=['orch',...ws];s+=briefs.reduce((n,k)=>n+Math.min(words(values[k])/22,1),0)/briefs.length*30;
+  s+=Math.min(words(values.task)/14,1)*8;if(on('critic'))s+=topology==='seq'?6:10;
+  s-=briefs.concat('task').flatMap(k=>split(values[k])).filter(w=>vague.has(w.toLowerCase())).length*3;
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+function scoreNote(){
+  if(!on('critic'))return 'no validator · findings unchecked';if(!on('guard'))return 'no compliance · scope ungated';
+  const weak=weakBriefs();if(weak.length)return 'flags to fix · '+weak.map(a=>a.short.toLowerCase()).join(', ');
+  if(topology==='seq')return 'pipeline · no feedback loop';return 'well-specified team';
+}
+
+/* ---------- swarm geometry ---------- */
+function computeKw(){kw={};ALL.forEach(a=>{const seen=new Set();kw[a.key]=split(textOf(a.key)).filter(w=>{const l=w.toLowerCase();if(l.length<4||stop.has(l)||seen.has(l))return false;seen.add(l);return true}).slice(0,10).map((w,i)=>{const l=w.toLowerCase(),bad=vague.has(l);return{w:l,kind:bad?'⚑ vague':a.kinds[hash(l)%a.kinds.length],bad,ang:i*2.39996+r01(a.key+l)*.5,d:.75+r01(l+'d')*.75}})})}
+function genCluster(a){
+  const R=rng(hash(a.key+'cloud')),n=a.key==='user'?500:Math.min(2200,700+words(textOf(a.key))*40),pts=[],rot=R()*Math.PI,ax=.85+R()*.45,ay=.55+R()*.35,arms=[0,1,2,3].map(()=>({a:R()*Math.PI*2,l:1+R()*1.1,c:(R()-.5)*1.4}));
+  for(let i=0;i<n;i++){let x,y;
+    if(R()<.28){const arm=arms[i%arms.length],d=R()*arm.l,aa=arm.a+arm.c*d;x=Math.cos(aa)*d+(R()-.5)*.14;y=Math.sin(aa)*d+(R()-.5)*.14}
+    else{const r=Math.sqrt(-2*Math.log(R()+1e-6))*.36,th=R()*Math.PI*2;x=Math.cos(th)*r*ax;y=Math.sin(th)*r*ay}
+    const cx=x*Math.cos(rot)-y*Math.sin(rot),cy=x*Math.sin(rot)+y*Math.cos(rot);
+    pts.push({x:cx,y:cy,b:R(),s:R()<.04?1.8:R()<.25?1.1:.7})}
+  const fib=[];for(let i=0;i<n;i++){let best=-1,bd=.05;for(let k=0;k<10;k++){const j=Math.floor(R()*n);if(j===i)continue;const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=dx*dx+dy*dy;if(d<bd){bd=d;best=j}}if(best>=0)fib.push(i,best)}
+  return{pts,fib};
+}
+function computeExtras(){
+  flags=[];links=[];
+  ALL.forEach(a=>{if(!on(a.key))return;const weak=a.key!=='user'&&words(values[a.key])<12;const n=split(textOf(a.key)).filter(w=>vague.has(w.toLowerCase())).length+(weak?2:0);
+    for(let i=0;i<n;i++)flags.push({k:a.key,ang:r01(a.key+'f'+i)*6.28,d:1.15+r01(a.key+'fd'+i)*.6})});
+  const sets={};AG.forEach(a=>{if(on(a.key))sets[a.key]=new Set(split(values[a.key]).map(w=>w.toLowerCase()).filter(w=>w.length>4&&!stop.has(w)))});
+  const ks=Object.keys(sets);for(let i=0;i<ks.length;i++)for(let j=i+1;j<ks.length;j++)sets[ks[i]].forEach(w=>{if(sets[ks[j]].has(w))links.push({a:ks[i],b:ks[j],w,t:.25+r01(w+ks[i])*.5,o:(r01(w+ks[j])-.5)*.25})});
+}
+function rebuild(){
+  plan=buildPlan();computeKw();ALL.forEach(a=>{clusters[a.key]=genCluster(a)});computeExtras();
+  $('mAgents').textContent=AG.filter(a=>on(a.key)).length+'/7';$('mLinks').textContent=links.length;$('mFlags').textContent=flags.length;
+  renderStrip();renderPanels();
+}
+function layout(w,h){
+  const narrow=w<640,cx=narrow?w*.5:w*.53,cy=narrow?h*.5:h*.53,rx=narrow?w*.32:w*.33,ry=narrow?h*.32:h*.31,base=Math.min(w,h),L={};
+  L.orch={x:cx,y:cy,R:base*.2};
+  WORKERS.forEach((k,i)=>{const a=-Math.PI/2+i*Math.PI/3+.12;L[k]={x:cx+Math.cos(a)*rx,y:cy+Math.sin(a)*ry,R:base*.155}});
+  L.user=narrow?{x:w*.14,y:h*.88,R:base*.07}:{x:w*.08,y:h*.8,R:base*.09};
+  return{L,sc:Math.max(.7,Math.min(1.25,base/620))};
+}
+function ctrl(a,b){const dx=b.x-a.x,dy=b.y-a.y;return{x:(a.x+b.x)/2-dy*.22,y:(a.y+b.y)/2+dx*.22}}
+function qpt(a,c,b,t){const u=1-t;return{x:u*u*a.x+2*u*t*c.x+t*t*b.x,y:u*u*a.y+2*u*t*c.y+t*t*b.y}}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+const TRAVEL=.42;
+
+/* ---------- run ---------- */
+function resetRun(){stepIdx=0;stepT=0;elapsed=0;runState='idle';used={};matrix={};logs=[];trail=[];tentRead=0;lastShown=-1;$('runBtn').textContent='▶ RUN';$('runBtn').classList.add('primary')}
+function log(verb,text,color){logs.unshift({t:elapsed,verb,text,color});logs=logs.slice(0,14)}
+function run(){
+  if(runState==='running'){runState='paused';$('runBtn').textContent='▶ RESUME';renderPanels();return}
+  if(runState==='paused'){runState='running';$('runBtn').textContent='Ⅱ PAUSE';renderPanels();return}
+  resetRun();rebuild();runState='running';$('runBtn').textContent='Ⅱ PAUSE';log('plan',`${TOPO[topology].toLowerCase()} · ${plan.length} hops`,'#3fd9c1');renderPanels();
+}
+function deliver(s){used[s.from]=(used[s.from]||0)+s.tok;const k=s.from+'>'+s.to;matrix[k]=(matrix[k]||0)+1}
+
+/* ---------- DOM panels ---------- */
+function curStep(){return plan[Math.min(stepIdx,plan.length-1)]}
+function renderStrip(){
+  const st=$('strip'),cur=(runState==='running'||runState==='paused')?curStep():null;st.innerHTML='';
+  AG.forEach(a=>{const b=document.createElement('button');b.type='button';b.textContent=a.name.toLowerCase();b.style.setProperty('--c',a.color);
+    b.className=[cur&&cur.to===a.key?'live':'',a.key===active?'sel':'',on(a.key)?'':'off'].join(' ');
+    b.addEventListener('click',()=>{active=a.key;showEditor()});st.append(b)});
+  const tp=$('topo');tp.innerHTML='';Object.entries(TOPO).forEach(([k,n])=>{const b=document.createElement('button');b.type='button';b.textContent=n;b.className=k===topology?'on':'';b.setAttribute('aria-pressed',k===topology);b.addEventListener('click',()=>{topology=k;resetRun();rebuild()});tp.append(b)});
+}
+function showEditor(){
+  const a=byKey(active);$('briefLabel').textContent=a.name;$('briefTools').textContent='tools · '+a.tools;
+  $('briefBox').value=values[active];$('briefCount').textContent=words(values[active])+' words';
+  $('taskBox').value=values.task;$('taskCount').textContent=words(values.task)+' words';
+  $('toggleRow').hidden=active==='orch';$('onBox').checked=on(active);renderStrip();
+}
+function renderPanels(){
+  const total=plan.length,running=runState==='running'||runState==='paused',cur=curStep(),rc=byKey(running?cur.to:'orch');
+  const head=$('shead');
+  if(runState==='idle'){head.style.setProperty('--hc','#dfe7f1');$('sNo').textContent='00';$('sName').textContent='READY';$('sSub').textContent=`${TOPO[topology].toLowerCase()} · ${total} hops · ~${fmt(plannedTotal())} tokens`}
+  else if(runState==='done'){head.style.setProperty('--hc','#3fd9c1');$('sNo').textContent=pad(total);$('sName').textContent='REPORT DELIVERED';$('sSub').textContent=`${total} hops · ${fmt(usedTotal())} tokens · ${loops()} loop${loops()===1?'':'s'}`}
+  else{head.style.setProperty('--hc',rc.color);$('sNo').textContent=pad(stepIdx+1);$('sName').textContent=rc.name;$('sSub').textContent=[cur.kind,cur.label,...(kw[cur.to]||[]).slice(0,3).map(k=>k.w)].join(' · ')}
+  $('sState').textContent=runState==='idle'?'STANDBY':runState.toUpperCase();
+  $('mHops').textContent=pad(runState==='done'?total:stepIdx)+'/'+pad(total);
+  $('mTok').textContent=fmt(running||runState==='done'?usedTotal():plannedTotal());
+  $('rate').textContent=runState==='running'?(speed*.8).toFixed(1)+' hop/s':'0 hop/s';
+  $('codeRate').textContent=runState==='running'?pad(stepIdx+1)+' l/s':runState;
+  const L=logs.length?logs:[{t:0,verb:'idle',text:'press run or edit the team',color:'#5d6b7c'},{t:0,verb:'idle',text:'no model api required',color:'#5d6b7c'}];
+  $('log').innerHTML=L.slice(0,12).map(l=>`<div class="lg"><i>${mmss(l.t)}</i><b style="color:${l.color}">${esc(l.verb)}</b> ${esc(l.text)}</div>`).join('');
+  $('secs').innerHTML=AG.map(a=>{const pl=planned(a.key),u=used[a.key]||0,c=running&&(cur.to===a.key||cur.from===a.key);
+    return `<div class="sec${c?' cur':''}"><div class="h"><span style="${on(a.key)?'':'text-decoration:line-through;opacity:.5'}">${a.name.toLowerCase()}</span><span>${on(a.key)?fmt(u)+'/'+fmt(pl):'offline'}</span></div><div class="tr"><div class="fl" style="width:${pl?u/pl*100:0}%;background:${a.color}"></div></div></div>`}).join('');
+  renderRadar();
+  const sent=k=>Object.entries(matrix).filter(([p])=>p.startsWith(k+'>')).reduce((n,[,v])=>n+v,0);
+  $('heat').innerHTML=AG.map(a=>{const pl=plan.filter(s=>s.from===a.key).length,sn=sent(a.key),cells=12;
+    return `<div class="r"><span>${a.short}</span>${Array.from({length:cells},(_,j)=>{const fillc=pl&&j<Math.round(sn/pl*cells);const plc=pl&&j<Math.round(pl/Math.max(...AG.map(b=>plan.filter(s=>s.from===b.key).length),1)*cells);return `<i style="background:${fillc?a.color:plc?'#18212c':'#0d1218'}"></i>`}).join('')}</div>`}).join('');
+  const sentAll=Object.values(matrix).reduce((n,v)=>n+v,0);$('heatTot').textContent=sentAll+'/'+total;
+  $('tps').textContent=(elapsed>0?Math.round(usedTotal()/elapsed):0)+'/s';
+  $('kv').innerHTML=[['sent',sentAll,'#dfe7f1'],['linked',links.length,'#f4d35e'],['flagged',flags.length,'#ff4f8b'],['loops',loops(),'#3fd9c1']].map(([k,v,c])=>`<div class="kv"><span>${k}</span><b style="color:${c}">${v}</b></div>`).join('');
+  const kinds={dispatch:0,result:0,review:0};plan.slice(0,runState==='done'?total:stepIdx).forEach(s=>{if(['dispatch','handoff','task'].includes(s.kind))kinds.dispatch++;else if(['result','final','approve'].includes(s.kind))kinds.result++;else kinds.review++});
+  const km=Math.max(1,...Object.values(kinds));$('kinds').innerHTML=Object.entries(kinds).map(([k,v])=>`<div class="minibar"><span>${k}</span><i style="width:${v/km*70}px"></i><span>${v}</span></div>`).join('');
+  renderScore();renderCode();renderStrip();
+}
+function renderRadar(){
+  const cx=85,cy=66,r=50,N=AG.length;let h='';
+  for(let l=1;l<=4;l++)h+=`<polygon points="${AG.map((a,i)=>{const an=-Math.PI/2+i*2*Math.PI/N;return (cx+Math.cos(an)*r*l/4).toFixed(1)+','+(cy+Math.sin(an)*r*l/4).toFixed(1)}).join(' ')}" fill="none" stroke="#18212c"/>`;
+  h+=`<polygon points="${AG.map((a,i)=>{const an=-Math.PI/2+i*2*Math.PI/N,pl=planned(a.key),v=.06+(pl?(used[a.key]||0)/pl:0)*.94;return (cx+Math.cos(an)*r*v).toFixed(1)+','+(cy+Math.sin(an)*r*v).toFixed(1)}).join(' ')}" fill="#3fd9c1" fill-opacity=".28" stroke="#3fd9c1" stroke-width="1.2"/>`;
+  AG.forEach((a,i)=>{const an=-Math.PI/2+i*2*Math.PI/N;h+=`<text x="${(cx+Math.cos(an)*64).toFixed(1)}" y="${(cy+Math.sin(an)*62).toFixed(1)}" font-size="7" fill="#5d6b7c" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono,monospace">${a.short}</text>`});
+  $('radar').innerHTML=h;
+}
+function renderScore(){
+  const toks=plan.map(s=>s.tok),mx=Math.max(1,...toks),n=toks.length,upto=runState==='done'?n:runState==='idle'?n:stepIdx;
+  const pts=toks.map((v,i)=>`${(4+i/(Math.max(1,n-1))*142).toFixed(1)},${(34-v/mx*28).toFixed(1)}`);
+  $('spark').innerHTML=`<polyline points="${pts.join(' ')}" fill="none" stroke="#2a3340" stroke-width="1.2"/><polyline points="${pts.slice(0,Math.max(1,upto)).join(' ')}" fill="none" stroke="#f4c35e" stroke-width="1.4"/>`;
+  const sc=score(),a0=Math.PI*.75,span=Math.PI*1.5,cx=75,cy=58,r=40,arc=(a,b)=>{const x1=cx+Math.cos(a)*r,y1=cy+Math.sin(a)*r,x2=cx+Math.cos(b)*r,y2=cy+Math.sin(b)*r;return `M${x1.toFixed(1)} ${y1.toFixed(1)} A${r} ${r} 0 ${b-a>Math.PI?1:0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`};
+  const col=sc>80?'#3fd9c1':sc>55?'#f4c35e':'#ff4f8b';
+  $('gauge').innerHTML=`<path d="${arc(a0,a0+span)}" stroke="#18212c" stroke-width="6" fill="none"/>${sc>0?`<path d="${arc(a0,a0+span*sc/100)}" stroke="${col}" stroke-width="6" fill="none" stroke-linecap="round"/>`:''}<text x="75" y="62" text-anchor="middle" font-size="22" fill="#e8eef5" font-family="JetBrains Mono,monospace">${sc}</text><text x="75" y="76" text-anchor="middle" font-size="7.5" fill="#5d6b7c" font-family="JetBrains Mono,monospace">team score</text>`;
+  $('scoreNote').textContent=scoreNote();
+}
+function renderCode(){
+  const cur=curStep(),phase=runState!=='running'&&runState!=='paused'?-1:stepT<TRAVEL?3:4;
+  const lines=[['c','# scan.py · routes an authorized scan through agents'],['','team = load("studio.scan")'],['',`router = ScanLead(topology="${topology}")`],
+    ['',`<span class="k">for</span> hop <span class="k">in</span> router.plan(scope):`],['','    msg = hop.sender.send(hop.brief)'],['','    hop.receiver.read(msg)'],['','    log(hop.kind, msg.tokens)'],['c',''],
+    ['c',cur&&phase>=0?`# ${cur.from} → ${cur.to} · ${esc(cur.kind)}`:'# waiting for run']];
+  const hl=phase<0?-1:phase===3?4:5;
+  $('code').innerHTML=lines.map((l,i)=>`<span class="${l[0]}${i===hl?' on':''}">${l[1]}</span>${i===hl?'<span class="cursor"></span>':''}`).join('\n');
+}
+
+/* ---------- canvas ---------- */
+function resize(){const dpr=Math.min(devicePixelRatio||1,2),w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);const R=rng(7);stars=Array.from({length:Math.round(w*h/900)},()=>({x:R()*w,y:R()*h,b:R(),s:R()<.06?1.5:.7}))}
+function crawlerPos(L,t){
+  if(runState==='idle')return{x:L.user.x,y:L.user.y,dir:0,col:USER.color};
+  if(runState==='done'){const u=L.user;return{x:u.x,y:u.y,dir:0,col:'#3fd9c1'}}
+  const s=curStep(),a=L[s.from],b=L[s.to],c=ctrl(a,b);
+  if(stepT<TRAVEL){const e=ease(stepT/TRAVEL),p=qpt(a,c,b,e),p2=qpt(a,c,b,Math.min(1,e+.02));return{x:p.x,y:p.y,dir:Math.atan2(p2.y-p.y,p2.x-p.x),col:byKey(s.from).color,travel:true}}
+  return{x:b.x+Math.sin(t*.002)*b.R*.06,y:b.y+Math.cos(t*.0017)*b.R*.05,dir:Math.sin(t*.001)*.3,col:byKey(s.to).color,travel:false};
+}
+function draw(t){
+  const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;
+  ctx.fillStyle='#020305';ctx.fillRect(0,0,w,h);
+  stars.forEach(s=>{ctx.fillStyle=`rgba(200,215,230,${.05+s.b*.18*(.7+.3*Math.sin(t*.001+s.x))})`;ctx.fillRect(s.x,s.y,s.s,s.s)});
+  const {L,sc}=layout(w,h),running=runState==='running'||runState==='paused',cur=running?curStep():null;
+  const visited=new Set(['user']);plan.slice(0,runState==='done'?plan.length:stepIdx).forEach(s=>{visited.add(s.from);visited.add(s.to)});if(cur&&stepT>=TRAVEL)visited.add(cur.to);
+  // routes already travelled
+  const seen=new Set();plan.slice(0,runState==='done'?plan.length:stepIdx).forEach(s=>{const k=s.from+'>'+s.to;if(seen.has(k))return;seen.add(k);const a=L[s.from],b=L[s.to],c=ctrl(a,b);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.quadraticCurveTo(c.x,c.y,b.x,b.y);ctx.strokeStyle=rgba(byKey(s.from).color,.12);ctx.lineWidth=.8;ctx.stroke()});
+  // clouds
+  ALL.forEach(a=>{const c=clusters[a.key];if(!c)return;const n=L[a.key],off=!on(a.key),isCur=cur&&(cur.to===a.key&&stepT>=TRAVEL),isFrom=cur&&cur.from===a.key&&stepT<TRAVEL,vis=visited.has(a.key);
+    const col=off?'#3a4350':(isCur||isFrom||vis)?a.color:'#b8c4d2';const alpha=off?.25:isCur?1:isFrom?.75:vis?.5:.32;const br=1+Math.sin(t*.0008+n.x)*.012;
+    ctx.lineWidth=.5;ctx.strokeStyle=rgba(col,alpha*.22);ctx.beginPath();for(let i=0;i<c.fib.length;i+=2){const p=c.pts[c.fib[i]],q=c.pts[c.fib[i+1]];ctx.moveTo(n.x+p.x*n.R*br,n.y+p.y*n.R*br);ctx.lineTo(n.x+q.x*n.R*br,n.y+q.y*n.R*br)}ctx.stroke();
+    for(const p of c.pts){ctx.fillStyle=rgba(col,alpha*(.25+p.b*.75)*(p.s>1.5?1:.8));const sz=p.s*(isCur&&p.s>1.5?1.4:1);ctx.fillRect(n.x+p.x*n.R*br-sz/2,n.y+p.y*n.R*br-sz/2,sz,sz)}
+    // label
+    const pl=planned(a.key),u=used[a.key]||0,status=off?'offline':isCur?'reading':isFrom?'sending':a.key==='user'?(runState==='done'?'answer received':'requester'):(pl&&u>=pl?'done':vis?'active':'queued');
+    ctx.textAlign='center';ctx.font=`500 ${Math.round(13*sc)}px "JetBrains Mono",monospace`;ctx.fillStyle=off?'#3a4350':isCur||isFrom?a.color:rgba(a.key==='orch'?'#e9eef5':vis?a.color:'#c8d2de',vis?.85:.6);
+    const ly=n.y-n.R*.95;ctx.fillText(a.name.toLowerCase(),n.x,ly);ctx.font=`${Math.round(8.5*sc)}px "JetBrains Mono",monospace`;ctx.fillStyle='rgba(120,135,152,.75)';
+    ctx.fillText(a.key==='user'?status:`${fmt(u)}/${fmt(pl)} tok · ${status}`,n.x,ly+12*sc)});
+  // shared-term links (yellow squares) and flags (pink squares)
+  links.forEach(k=>{const a=L[k.a],b=L[k.b],show=visited.has(k.a)&&visited.has(k.b);const x=a.x+(b.x-a.x)*k.t-(b.y-a.y)*k.o,y=a.y+(b.y-a.y)*k.t+(b.x-a.x)*k.o;const s=(show?5:3)*sc;ctx.fillStyle=rgba('#f4d35e',show?.9:.18);ctx.fillRect(x-s/2,y-s/2,s,s)});
+  flags.forEach(f=>{const n=L[f.k];const x=n.x+Math.cos(f.ang)*n.R*f.d,y=n.y+Math.sin(f.ang)*n.R*f.d*.8,show=visited.has(f.k),s=(show?5.5:3.5)*sc;ctx.fillStyle=rgba('#ff4f8b',show?.85:.25);ctx.fillRect(x-s/2,y-s/2,s,s)});
+  // trail
+  const cp=crawlerPos(L,t);
+  if(runState==='running'&&cp.travel){trail.push({x:cp.x,y:cp.y,c:cp.col});if(trail.length>220)trail.shift()}
+  for(let i=1;i<trail.length;i++){const p=trail[i-1],q=trail[i];ctx.strokeStyle=rgba(q.c,i/trail.length*.55);ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke()}
+  // tentacles to the receiving agent's key terms
+  if(cur&&stepT>=TRAVEL){const recv=byKey(cur.to),n=L[cur.to],items=kw[cur.to]||[],prog=(stepT-TRAVEL)/(1-TRAVEL),shown=Math.min(items.length,Math.ceil(prog*items.length*1.15));
+    if(shown>lastShown){for(let i=Math.max(0,lastShown);i<shown;i++){const it=items[i];if(it){log(it.bad?'flag':'read',it.w,it.bad?'#ff4f8b':recv.color);tentRead++}}lastShown=shown;renderPanels()}
+    ctx.font=`${Math.round(9.5*sc)}px "JetBrains Mono",monospace`;ctx.textAlign='left';
+    items.slice(0,shown).forEach((it,i)=>{const tx=n.x+Math.cos(it.ang)*n.R*it.d*1.25,ty=n.y+Math.sin(it.ang)*n.R*it.d*.85,cx2=(cp.x+tx)/2+Math.sin(t*.002+i)*8*sc,cy2=(cp.y+ty)/2-14*sc;
+      const col=it.bad?'#ff4f8b':recv.color;ctx.setLineDash([1.5,3]);ctx.strokeStyle=rgba(col,.75);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cp.x,cp.y);ctx.quadraticCurveTo(cx2,cy2,tx,ty);ctx.stroke();ctx.setLineDash([]);
+      ctx.beginPath();ctx.arc(tx,ty,2.6*sc,0,Math.PI*2);ctx.strokeStyle=rgba(col,.9);ctx.stroke();
+      const label=`${it.w} · ${it.kind}`,tw=ctx.measureText(label).width+8,bx=Math.min(w-tw-6,Math.max(6,tx+5)),by=ty-16*sc;
+      if(it.bad){ctx.fillStyle='rgba(255,79,139,.9)';ctx.fillRect(bx,by,tw,13*sc);ctx.fillStyle='#14040a'}else{ctx.fillStyle='rgba(3,5,8,.82)';ctx.fillRect(bx,by,tw,13*sc);ctx.strokeStyle=rgba(col,.7);ctx.strokeRect(bx+.5,by+.5,tw-1,13*sc-1);ctx.fillStyle=rgba(col,.95)}
+      ctx.fillText(label,bx+4,by+9.5*sc)})}
+  // message label while travelling
+  if(cur&&stepT<TRAVEL){ctx.font=`${Math.round(9.5*sc)}px "JetBrains Mono",monospace`;const lbl=`${cur.label} · ${cur.tok} tok`,tw=ctx.measureText(lbl).width+8,bx=Math.min(w-tw-6,cp.x+16),by=cp.y-28*sc;ctx.fillStyle='rgba(3,5,8,.85)';ctx.fillRect(bx,by,tw,14*sc);ctx.strokeStyle=rgba(cp.col,.7);ctx.strokeRect(bx+.5,by+.5,tw-1,14*sc-1);ctx.fillStyle=cp.col;ctx.textAlign='left';ctx.fillText(lbl,bx+4,by+10*sc)}
+  drawCrawler(cp,t,sc);
+}
+function drawCrawler(cp,t,sc){
+  const body='#3fd9c1',rx=13*sc,ry=9.5*sc,legs=18;
+  ctx.save();ctx.translate(cp.x,cp.y);ctx.rotate(cp.dir);
+  for(let i=0;i<legs;i++){const a=i/legs*Math.PI*2,wig=Math.sin(t*.012+i*1.7)*(cp.travel?.25:.1),len=(16+((i*7)%5)*2)*sc,ex=Math.cos(a+wig)*(rx+len),ey=Math.sin(a+wig)*(ry+len),mx=Math.cos(a)*(rx+len*.55)+Math.cos(a+1.4)*3*sc,my=Math.sin(a)*(ry+len*.55)+Math.sin(a+1.4)*3*sc;
+    ctx.strokeStyle=rgba(body,.65);ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(Math.cos(a)*rx,Math.sin(a)*ry);ctx.quadraticCurveTo(mx,my,ex,ey);ctx.stroke();ctx.fillStyle=rgba(body,.9);ctx.fillRect(ex-1,ey-1,2,2)}
+  ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.fillStyle='rgba(4,26,28,.92)';ctx.fill();ctx.save();ctx.clip();ctx.strokeStyle=rgba(body,.35);ctx.lineWidth=.6;
+  for(let g=-rx;g<=rx;g+=3*sc){ctx.beginPath();ctx.moveTo(g,-ry);ctx.lineTo(g,ry);ctx.stroke()}for(let g=-ry;g<=ry;g+=3*sc){ctx.beginPath();ctx.moveTo(-rx,g);ctx.lineTo(rx,g);ctx.stroke()}ctx.restore();
+  ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);ctx.strokeStyle=body;ctx.lineWidth=1.3;ctx.stroke();
+  const cs=(4+Math.sin(t*.01)*.8)*sc;ctx.shadowColor='#ff4f8b';ctx.shadowBlur=10;ctx.fillStyle='#ff4f8b';ctx.fillRect(-cs/2,-cs/2,cs,cs);ctx.shadowBlur=0;
+  ctx.restore();
+}
+function hit(ev){const r=canvas.getBoundingClientRect(),x=ev.clientX-r.left,y=ev.clientY-r.top,{L}=layout(canvas.clientWidth,canvas.clientHeight);let best=null,bd=1e9;AG.forEach(a=>{const n=L[a.key],d=Math.hypot(n.x-x,n.y-y);if(d<n.R*1.1&&d<bd){bd=d;best=a.key}});return best}
+canvas.addEventListener('click',ev=>{const k=hit(ev);if(k){active=k;$('drawer').hidden=false;showEditor()}});
+canvas.addEventListener('mousemove',ev=>{canvas.style.cursor=hit(ev)?'pointer':'default'});
+
+function animate(t){
+  if(!lastT)lastT=t;const dt=Math.min(100,t-lastT);lastT=t;tick++;
+  if(runState==='running'&&plan.length){elapsed+=dt/1000;const s=plan[stepIdx];const prev=stepT;stepT+=dt/1000*speed/(1.1+Math.min(1.4,s.tok/1200));
+    if(prev<TRAVEL&&stepT>=TRAVEL){deliver(s);log('send',`${byKey(s.from).short.toLowerCase()} → ${byKey(s.to).short.toLowerCase()} ${s.label}`,byKey(s.from).color);trail=trail.slice(-60);lastShown=0;renderPanels()}
+    if(stepT>=1){stepIdx++;stepT=0;lastShown=-1;if(stepIdx>=plan.length){runState='done';stepIdx=plan.length;$('runBtn').textContent='▶ RUN AGAIN';log('done','report delivered to sec team','#3fd9c1')}renderPanels()}}
+  if(plan.length)$('sPct').textContent=Math.round((runState==='done'?1:(stepIdx+stepT)/plan.length)*100)+'%';
+  if(tick%6===0){$('mFrame').textContent=pad(tick%10000,4);$('mT').textContent=elapsed.toFixed(2);$('mTent').textContent=tentRead}
+  draw(t);requestAnimationFrame(animate);
+}
+function buildPrompts(){return `# TASK\n${values.task.trim()}\n\n# TOPOLOGY\n${TOPO[topology]}\n\n`+AG.filter(a=>on(a.key)).map(a=>`## ${a.name}\nTools: ${a.tools}\n${values[a.key].trim()}`).join('\n\n')}
+function buildJSON(){return JSON.stringify({topology,task:values.task,agents:AG.map(a=>({name:a.name,enabled:on(a.key),tools:a.tools,brief:values[a.key]})),plan:plan.map(s=>({from:s.from,to:s.to,kind:s.kind,label:s.label,est_tokens:s.tok})),stats:{hops:plan.length,est_tokens:plannedTotal(),loops:loops(),shared_terms:links.length,flags:flags.length,illustrative_score:score()}},null,2)}
+async function copy(text,id){const b=$(id),old=b.textContent;try{await navigator.clipboard.writeText(text);b.textContent='✓ COPIED'}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.append(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();b.textContent=ok?'✓ COPIED':'COPY BLOCKED'}setTimeout(()=>b.textContent=old,1200)}
+function edited(){resetRun();rebuild()}
+$('briefBox').addEventListener('input',e=>{values[active]=e.target.value;$('briefCount').textContent=words(e.target.value)+' words';edited()});
+$('taskBox').addEventListener('input',e=>{values.task=e.target.value;$('taskCount').textContent=words(e.target.value)+' words';edited()});
+$('onBox').addEventListener('change',e=>{enabled[active]=e.target.checked;edited()});
+$('runBtn').addEventListener('click',run);
+$('resetBtn').addEventListener('click',()=>{resetRun();renderPanels()});
+$('editBtn').addEventListener('click',()=>{$('drawer').hidden=!$('drawer').hidden;showEditor()});
+$('closeBtn').addEventListener('click',()=>{$('drawer').hidden=true});
+$('exampleBtn').addEventListener('click',()=>{values={...sample};enabled=Object.fromEntries(AG.map(a=>[a.key,true]));edited();showEditor()});
+const speeds=[.5,1,2,4];$('speedBtn').addEventListener('click',()=>{speed=speeds[(speeds.indexOf(speed)+1)%speeds.length];$('speedBtn').textContent=`SPEED ${speed}×`;renderPanels()});
+$('copyBtn').addEventListener('click',()=>copy(buildPrompts(),'copyBtn'));
+$('jsonBtn').addEventListener('click',()=>copy(buildJSON(),'jsonBtn'));
+window.addEventListener('resize',resize);
+resize();rebuild();showEditor();requestAnimationFrame(animate);
+if(!matchMedia('(prefers-reduced-motion: reduce)').matches)setTimeout(()=>{if(runState==='idle')run()},700);
+})();
+</script>
